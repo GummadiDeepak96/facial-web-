@@ -15,7 +15,8 @@ import {
   FileText,
   BarChart3,
   Search,
-  Download
+  Download,
+  Key
 } from 'lucide-react';
 import './ManagerDashboard.css';
 
@@ -48,6 +49,12 @@ const ManagerDashboard = () => {
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const fetchDashboardStats = async () => {
     try {
@@ -376,6 +383,38 @@ const ManagerDashboard = () => {
     logout();
     navigate('/');
     toast.success('Logged out successfully');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await managerAPI.changePassword(
+        passwordData.newPassword
+      );
+      toast.success('Password changed successfully');
+      setShowPasswordModal(false);
+      setPasswordData({
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      toast.error(error.response?.data?.error || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const renderStatsCards = () => (
@@ -910,6 +949,13 @@ const ManagerDashboard = () => {
               <FileText size={20} />
               <span>Reports</span>
             </button>
+            <button
+              className="nav-item"
+              onClick={() => setShowPasswordModal(true)}
+            >
+              <Key size={20} />
+              <span>Change Password</span>
+            </button>
           </nav>
         </aside>
 
@@ -917,6 +963,61 @@ const ManagerDashboard = () => {
           {renderContent()}
         </main>
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Change Password</h2>
+            <form onSubmit={handleChangePassword}>
+              <div className="form-group">
+                <label>New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  required
+                  minLength="6"
+                  placeholder="Enter new password (min 6 characters)"
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  required
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({
+                      newPassword: '',
+                      confirmPassword: ''
+                    });
+                  }}
+                  className="btn-secondary"
+                  disabled={passwordLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

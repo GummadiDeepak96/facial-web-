@@ -192,6 +192,9 @@ export const managerAPI = {
 
   updateEmployeeStatus: (employeeId, status) =>
     api.put(`/manager/employees/${employeeId}/status`, { statusflag: status }),
+
+  changePassword: (newPassword) =>
+    api.post('/manager/change-password', { newPassword }),
 };
 
 export default api;

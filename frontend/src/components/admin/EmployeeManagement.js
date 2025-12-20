@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../services/api';
 import { toast } from 'react-toastify';
-import { UserPlus, Edit, Trash2, Search, Eye, Upload, Building2, Users, Clock, Download, X, RefreshCw, Key } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Search, Eye, Upload, Building2, Users, Clock, Download, X, RefreshCw, Key, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import './EmployeeManagement.css'; // Import the CSS file
 import { CircularProgress } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const EmployeeManagement = () => {
   const { user, logout } = useAuth();
@@ -33,6 +34,7 @@ const EmployeeManagement = () => {
   });
   const [itemsPerPage] = useState(10);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [downloadFilters, setDownloadFilters] = useState({
     department: 'all',
     role: 'all'
@@ -717,6 +719,73 @@ if (empCopy.status) {
     handleCloseDownloadModal();
   };
 
+  const generateExcel = () => {
+    // Filter employees based on selected department and role (same as PDF)
+    let filteredData = employees.filter(emp => {
+      const empDeptId = emp.department_id || emp.departmentid || emp.dept_id;
+      const empRoleId = emp.role_id || emp.roleid;
+      const matchesDept = downloadFilters.department === 'all' || 
+                         String(empDeptId) === String(downloadFilters.department);
+      const matchesRole = downloadFilters.role === 'all' || 
+                         String(empRoleId) === String(downloadFilters.role);
+      return matchesDept && matchesRole;
+    });
+
+    if (filteredData.length === 0) {
+      toast.warning('No employees found with selected filters');
+      return;
+    }
+
+    const deptName = downloadFilters.department === 'all' ? 'All' : 
+                     (departments.find(d => d.id === parseInt(downloadFilters.department))?.departmentname || 'All');
+    const roleName = downloadFilters.role === 'all' ? 'All' : 
+                     (roles.find(r => r.id === parseInt(downloadFilters.role))?.rolename || 'All');
+
+    const rows = filteredData.map((emp, index) => {
+      let dept = emp.departmentname || emp.department_name || emp.department;
+      if (!dept && (emp.department_id || emp.departmentid || emp.dept_id)) {
+        const deptId = emp.department_id || emp.departmentid || emp.dept_id;
+        const d = departments.find(d => d.id === parseInt(deptId));
+        dept = d?.departmentname || d?.name || d?.department_name;
+      }
+      dept = dept || 'N/A';
+
+      let role = emp.rolename || emp.role_name || emp.role;
+      if (!role && (emp.role_id || emp.roleid)) {
+        const roleId = emp.role_id || emp.roleid;
+        const r = roles.find(r => r.id === parseInt(roleId));
+        role = r?.rolename || r?.name || r?.role_name;
+      }
+      role = role || 'N/A';
+
+      let shift = emp.shiftname || emp.shift_name || emp.shift;
+      if (!shift && (emp.shift_id || emp.shiftid)) {
+        const shiftId = emp.shift_id || emp.shiftid;
+        const s = shifts.find(s => s.id === parseInt(shiftId));
+        shift = s?.shiftname || s?.name || s?.shift_name;
+      }
+      shift = shift || 'N/A';
+
+      return {
+        '#': index + 1,
+        Name: emp.name || emp.person_name || 'N/A',
+        Email: emp.email || 'N/A',
+        Department: dept,
+        Role: role,
+        Shift: shift,
+        Status: emp.person_id || emp.biometric_id || 'N/A',
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
+    const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast.success('Excel downloaded successfully');
+    handleCloseDownloadModal();
+  };
+
   const handleLogout = () => {
     logout();
     toast.success('Logged out successfully');
@@ -1243,13 +1312,25 @@ if (empCopy.status) {
                 </div>
               </div>
 
-              <div className="modal-actions">
+              <div className="modal-actions download-menu-wrapper">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseDownloadModal}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn-download" onClick={generatePDF}>
-                  <Download size={18} /> Generate PDF
-                </button>
+                <div className="download-menu-trigger">
+                  <button type="button" className="btn btn-download" onClick={() => setDownloadMenuOpen(prev => !prev)}>
+                    <Download size={18} /> Download Report <ChevronDown size={16} style={{ marginLeft: 8 }} />
+                  </button>
+                  {downloadMenuOpen && (
+                    <div className="download-menu">
+                      <button type="button" className="download-menu-item" onClick={() => { setDownloadMenuOpen(false); generatePDF(); }}>
+                        <FileText size={16} /> Download as PDF
+                      </button>
+                      <button type="button" className="download-menu-item" onClick={() => { setDownloadMenuOpen(false); generateExcel(); }}>
+                        <FileSpreadsheet size={16} /> Download as Excel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

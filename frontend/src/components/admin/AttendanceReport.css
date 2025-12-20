@@ -104,11 +104,11 @@
   color: white;
 }
 
-.btn-show-report:hover {
+/* .btn-show-report:hover {
   background: #0b7dda;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
-}
+} */
 
 .btn-clear {
   padding: 12px 24px;
@@ -142,7 +142,7 @@
   background: white;
   padding: 30px;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(237, 235, 235, 0.1);
 }
 
 .report-header-info {

@@ -698,4 +698,54 @@ router.get('/attendance-report/download', authenticateManager, async (req, res) 
   }
 });
 
+// Change Password for Manager
+router.post('/change-password', authenticateManager, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const managerId = req.manager.id;
+
+    // Validate input
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Get manager from database
+    const managers = await db.query('SELECT * FROM managers WHERE id = ?', [managerId]);
+    const manager = managers[0];
+
+    if (!manager) {
+      return res.status(404).json({ error: 'Manager not found' });
+    }
+
+    // Hash new password
+    const { hashPassword } = require('../auth');
+    const hashedPassword = await hashPassword(newPassword);
+
+    // Update password
+    await db.query(
+      'UPDATE managers SET password = ? WHERE id = ?',
+      [hashedPassword, managerId]
+    );
+
+    // Send confirmation email if email service is available
+    try {
+      const { sendPasswordChangeConfirmation } = require('../utils/emailService');
+      await sendPasswordChangeConfirmation(manager.email, manager.name || 'Manager');
+    } catch (emailErr) {
+      console.error('Failed to send password change confirmation email:', emailErr.message);
+      // Don't fail the request if email fails
+    }
+
+    res.json({ message: 'Password changed successfully' });
+
+  } catch (error) {
+    console.error('Manager change password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
