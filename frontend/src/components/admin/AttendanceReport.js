@@ -542,7 +542,7 @@ const AttendanceReport = () => {
       {reportData && !loading && (
         <div className="report-display">
           <div className="report-header-info" style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #efefefff 0%, #ffffffff 100%)',
             color: 'white',
             padding: '24px',
             borderRadius: '12px',
