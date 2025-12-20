@@ -1,0 +1,422 @@
+/**
+ * Face Recognition Routes
+ * Handles face upload, retrieval, and attendance logging
+ * Maps to persons and records tables
+ */
+
+const express = require('express');
+const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const { db } = require('../database');
+
+// Helper: Strip base64 prefix
+function stripBase64Prefix(base64) {
+  if (!base64) return base64;
+  const commaIndex = base64.indexOf(',');
+  if (base64.startsWith('data:') && commaIndex !== -1) {
+    return base64.slice(commaIndex + 1);
+  }
+  return base64;
+}
+
+// Helper: Save base64 image to disk
+async function saveBase64Image(base64, name) {
+  if (!base64) return null;
+  try {
+    const cleanBase64 = stripBase64Prefix(base64);
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const safeName = (name || 'img').toString().replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filename = `${Date.now()}_${safeName}.jpg`;
+
+    const dir = path.join(__dirname, '..', 'uploads', 'faces');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const filePath = path.join(dir, filename);
+    await fs.promises.writeFile(filePath, buffer);
+    return `uploads/faces/${filename}`;
+  } catch (e) {
+    console.warn('Failed to save image:', e && e.message);
+    return null;
+  }
+}
+
+// Helper: Cosine similarity for duplicate detection
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i], y = b[i];
+    dot += x * y;
+    magA += x * x;
+    magB += y * y;
+  }
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+// Helper: Check for duplicate embeddings
+async function isDuplicateEmbedding(newEmbedding, threshold = 0.95) {
+  if (!Array.isArray(newEmbedding)) return false;
+  try {
+    const rows = await db.query('SELECT embedding_json FROM person WHERE embedding_json IS NOT NULL');
+    for (const row of rows) {
+      try {
+        const stored = JSON.parse(row.embedding_json);
+        const sim = cosineSimilarity(newEmbedding, stored);
+        if (sim > threshold) return true;
+      } catch (e) {
+        // skip invalid rows
+      }
+    }
+    return false;
+  } catch (err) {
+    console.error('Error checking duplicate embedding:', err.message);
+    return false;
+  }
+}
+
+// Helper: Validate embedding
+function validateEmbedding(embedding) {
+  return Array.isArray(embedding) && embedding.length === 512;
+}
+
+// POST /api/faces/upload
+// Upload face data from mobile/offline clients
+// Required: localId, personName, faceEmbedding
+// Optional: imageBase64, registeredLatitude, registeredLongitude
+router.post('/upload', async (req, res) => {
+  const {
+    localId,
+    personName,
+    faceEmbedding,
+    imageBase64,
+    registeredLatitude,
+    registeredLongitude
+  } = req.body;
+
+  if (typeof localId === 'undefined' || !personName || !faceEmbedding) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing required fields: localId, personName, faceEmbedding'
+    });
+  }
+
+  if (!validateEmbedding(faceEmbedding)) {
+    return res.status(400).json({
+      success: false,
+      message: 'faceEmbedding must be an array of 512 floats'
+    });
+  }
+
+  try {
+    // Duplicate detection (embedding)
+    const duplicate = await isDuplicateEmbedding(faceEmbedding, 0.95);
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Duplicate face detected',
+        data: { localId }
+      });
+    }
+
+    // Save image if provided
+    const imagePath = await saveBase64Image(imageBase64, personName);
+    const now = Date.now();
+
+    // Insert into person table (no approval_status column, admin will add to employees manually)
+    const result = await db.query(
+      `INSERT INTO person
+        (name, embedding_json, image_path, registered_latitude, registered_longitude, local_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        personName,
+        JSON.stringify(faceEmbedding),
+        imagePath,
+        (typeof registeredLatitude !== 'undefined') ? registeredLatitude : null,
+        (typeof registeredLongitude !== 'undefined') ? registeredLongitude : null,
+        localId,
+        now,
+        now
+      ]
+    );
+
+    const serverId = result.insertId.toString();
+    return res.json({
+      success: true,
+      message: 'Face uploaded successfully',
+      data: { serverId, localId }
+    });
+  } catch (err) {
+    console.error('Error in /api/faces/upload:', err && err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Server error',
+      data: { localId }
+    });
+  }
+});
+
+// GET /api/faces/all
+// Get all faces with embeddings
+router.get('/all', async (req, res) => {
+  try {
+    const rows = await db.query(
+      'SELECT id, name, embedding_json, image_path, registered_latitude, registered_longitude FROM person WHERE embedding_json IS NOT NULL'
+    );
+
+    const faces = [];
+    for (const row of rows) {
+      let imageBase64 = null;
+      if (row.image_path) {
+        try {
+          const p = path.join(__dirname, '..', row.image_path);
+          const buf = await fs.promises.readFile(p);
+          imageBase64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+        } catch (err) {
+          // ignore read errors
+        }
+      }
+
+      faces.push({
+        id: row.id.toString(),
+        name: row.name,
+        embedding: row.embedding_json ? JSON.parse(row.embedding_json) : null,
+        imageBase64,
+        latitude: row.registered_latitude,
+        longitude: row.registered_longitude
+      });
+    }
+
+    return res.json({ success: true, data: { faces } });
+  } catch (err) {
+    console.error('Error in /api/faces/all:', err && err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+});
+
+// GET /api/faces/pending
+// Get pending faces awaiting admin approval
+router.get('/pending', async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT id, name, email, phone, embedding_json, image_path, registered_latitude, registered_longitude, created_at 
+       FROM person 
+       WHERE embedding_json IS NOT NULL AND approval_status = 'pending'
+       ORDER BY created_at DESC`
+    );
+
+    const pending = [];
+    for (const row of rows) {
+      let imageBase64 = null;
+      if (row.image_path) {
+// GET /api/faces/pending
+// Get persons not yet converted to employees (awaiting admin approval)
+router.get('/pending', async (req, res) => {
+  try {
+    // Get persons with embeddings who don't have an employee record yet
+    const rows = await db.query(
+      `SELECT p.id, p.name, p.embedding_json, p.image_path, p.registered_latitude, p.registered_longitude, p.created_at 
+       FROM person p
+       LEFT JOIN employees e ON e.person_id = p.id
+       WHERE p.embedding_json IS NOT NULL AND e.id IS NULL
+       ORDER BY p.created_at DESC`
+    );
+
+    const pending = [];
+    for (const row of rows) {
+      let imageBase64 = null;
+      if (row.image_path) {
+        try {
+          const p = path.join(__dirname, '..', row.image_path);
+          const buf = await fs.promises.readFile(p);
+          imageBase64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      pending.push({
+        id: row.id.toString(),
+        name: row.name,
+        hasEmbedding: !!row.embedding_json,
+        imageBase64,
+        latitude: row.registered_latitude,
+        longitude: row.registered_longitude,
+        created_at: row.created_at
+      });
+    }
+
+    return res.json({ success: true, data: { pending, count: pending.length } });
+  } catch (err) {
+    console.error('Error in /api/faces/pending:', err && err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+});
+
+// Note: Admin approval is handled outside this API
+// Admin manually adds dept, role, shift and creates employee record
+// This can be integrated into admin dashboard later
+
+// GET /api/faces/image/:id
+// Get face image by person ID
+router.get('/image/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = await db.query('SELECT id, name, image_path FROM person WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Face not found' });
+    }
+    const face = rows[0];
+    if (!face.image_path) {
+      return res.status(404).json({ success: false, message: 'Image file not found for this face' });
+    }
+    const imagePath = path.join(__dirname, '..', face.image_path);
+    const imageBuffer = await fs.promises.readFile(imagePath);
+    const imageBase64 = imageBuffer.toString('base64');
+    return res.json({
+      success: true,
+      data: { id: face.id.toString(), name: face.name, imageBase64: `data:image/jpeg;base64,${imageBase64}` }
+    });
+  } catch (err) {
+    console.error('Error in /api/faces/image/:id:', err && err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+});
+
+// POST /api/faces/attendance/log
+// Log attendance from face recognition
+// Required: name, timestamp
+// Optional: faceId, imageBase64, latitude, longitude, method
+router.post('/attendance/log', async (req, res) => {
+  const { faceId, name, imageBase64, latitude, longitude, method, timestamp } = req.body;
+
+  if (!name || typeof timestamp === 'undefined') {
+    return res.status(400).json({ success: false, message: 'Missing required fields: name, timestamp' });
+  }
+
+  const clientTime = Number(timestamp);
+  if (Number.isNaN(clientTime) || clientTime <= 0) {
+    return res.status(400).json({ success: false, message: 'Invalid timestamp' });
+  }
+
+  if (typeof latitude !== 'undefined') {
+    const lat = Number(latitude);
+    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+      return res.status(400).json({ success: false, message: 'Invalid latitude' });
+    }
+  }
+  if (typeof longitude !== 'undefined') {
+    const lon = Number(longitude);
+    if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+      return res.status(400).json({ success: false, message: 'Invalid longitude' });
+    }
+  }
+
+  try {
+    // Duplicate check
+    if (typeof faceId !== 'undefined' && faceId !== null) {
+      const existing = await db.query(
+        'SELECT id FROM records WHERE face_id = ? AND log_time = ? LIMIT 1',
+        [faceId, clientTime]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ success: false, message: 'Duplicate attendance log', data: { existingId: existing[0].id } });
+      }
+    } else {
+      const existing = await db.query(
+        'SELECT id FROM records WHERE name = ? AND log_time = ? LIMIT 1',
+        [name, clientTime]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ success: false, message: 'Duplicate attendance log', data: { existingId: existing[0].id } });
+      }
+    }
+
+    let imagePath = null;
+    if (imageBase64) {
+      imagePath = await saveBase64Image(imageBase64, `attendance_${name}`);
+    }
+
+    const now = Date.now();
+    
+    // Convert timestamp to date for date column
+    const logDate = new Date(clientTime);
+    const dateStr = logDate.toISOString().split('T')[0];
+
+    const result = await db.query(
+      `INSERT INTO records
+        (face_id, name, method, image_path, latitude, longitude, log_time, created_at, date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        faceId ?? null,
+        name,
+        method ?? 'facial',
+        imagePath,
+        typeof latitude !== 'undefined' ? latitude : null,
+        typeof longitude !== 'undefined' ? longitude : null,
+        clientTime,
+        now,
+        dateStr
+      ]
+    );
+
+    const serverId = result.insertId.toString();
+    return res.json({
+      success: true,
+      message: 'Attendance logged successfully',
+      data: { serverId, timestamp: clientTime }
+    });
+  } catch (err) {
+    console.error('Error in /api/faces/attendance/log:', err && err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+});
+
+// GET /api/faces/attendance/recent
+// Get recent attendance logs
+// Query params: limit (default 50, max 500), withImages (true/false)
+router.get('/attendance/recent', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+  const withImages = req.query.withImages === 'true' || req.query.withImages === '1';
+  
+  try {
+    const rows = await db.query(
+      'SELECT id, face_id, name, method, image_path, latitude, longitude, log_time FROM records WHERE log_time IS NOT NULL ORDER BY log_time DESC LIMIT ?',
+      [limit]
+    );
+
+    const logs = [];
+    for (const row of rows) {
+      let imageBase64 = null;
+      if (withImages && row.image_path) {
+        try {
+          const p = path.join(__dirname, '..', row.image_path);
+          const buf = await fs.promises.readFile(p);
+          imageBase64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+        } catch (err) {
+          // ignore
+        }
+      }
+      logs.push({
+        id: row.id.toString(),
+        faceId: row.face_id,
+        name: row.name,
+        method: row.method,
+        imageBase64,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        logTime: row.log_time
+      });
+    }
+
+    return res.json({ success: true, data: { logs } });
+  } catch (err) {
+    console.error('Error in /api/faces/attendance/recent:', err && err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+});
+
+module.exports = router;

@@ -1,0 +1,464 @@
+/* Department Management Styles */
+.department-management {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative; /* anchor popups to main content, not full viewport */
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.page-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+/* Departments Grid */
+.departments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.department-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 2px solid transparent;
+}
+
+.department-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(123, 115, 255, 0.15);
+  border-color: #7B73FF;
+}
+
+.department-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #7B73FF 0%, #5E56E8 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.department-info {
+  flex: 1;
+}
+
+.department-info h3 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.department-info p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 13px;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0; /* cover entire screen */
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* push modal to the right */
+  z-index: 1000;
+  padding: 20px;
+  padding-left: 320px; /* offset for sidebar + padding */
+}
+
+/* In department pages, constrain overlay to the content area only */
+.department-management .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0; /* cover full screen */
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding-left: 320px; /* sidebar width + spacing */
+  justify-content: center;
+}
+
+/* Shifted overlay keeps the left sidebar visible instead of covering it */
+
+/* Default shifted behavior (for pages without container anchoring) */
+.modal-overlay.modal-overlay-shifted {
+  --sidebar-width: 300px;
+  left: 0; /* cover full screen */
+  right: 0;
+  pointer-events: none; /* don't block clicks by default */
+  box-sizing: border-box;
+  justify-content: center;
+  padding-left: calc(var(--sidebar-width) + 20px);
+  padding-right: 20px;
+  z-index: 1000;
+  position: fixed;
+}
+
+/* The background area should capture clicks to close modal */
+.modal-overlay.modal-overlay-shifted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--sidebar-width); /* start after sidebar */
+  right: 0;
+  bottom: 0;
+  pointer-events: auto; /* this area can be clicked */
+  z-index: -1;
+}
+
+/* In department pages, use the same shifted style */
+.department-management .modal-overlay.modal-overlay-shifted {
+  left: 0;
+  justify-content: center;
+  padding-left: calc(var(--sidebar-width) + 20px);
+  pointer-events: none;
+}
+
+.modal-overlay.modal-overlay-shifted .modal {
+  pointer-events: auto; /* modal captures clicks */
+  width: auto;
+  max-width: calc(100% - 40px);
+  margin: 0 auto;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1001;
+}
+
+/* In department pages, modal width is based on content area */
+.department-management .modal-overlay.modal-overlay-shifted .modal,
+.department-management .modal-overlay .modal {
+  max-width: min(1200px, calc(100vw - 360px));
+}
+
+@media (max-width: 1100px) {
+  /* On narrower screens, reduce sidebar offset */
+  .modal-overlay {
+    padding-left: 260px; /* reduced sidebar width */
+  }
+  .modal-overlay.modal-overlay-shifted {
+    padding-left: 260px;
+    --sidebar-width: 260px;
+  }
+  .modal-overlay.modal-overlay-shifted .modal {
+    max-width: calc(100vw - 300px);
+    margin: 0 auto;
+    pointer-events: auto;
+    z-index: 100000;
+  }
+
+  /* In department pages, keep modal within content width even on smaller screens */
+  .department-management .modal-overlay.modal-overlay-shifted .modal,
+  .department-management .modal-overlay .modal {
+    max-width: calc(100vw - 300px);
+  }
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease;
+}
+
+/* Wide modal for tables (employees list) */
+.modal[style*="maxWidth: '900px'"],
+.modal[style*="max-width: 900px"] {
+  max-width: min(1100px, calc(100vw - var(--sidebar-width, 300px) - 80px)) !important;
+}
+
+@media (max-width: 1100px) {
+  .modal[style*="maxWidth: '900px'"],
+  .modal[style*="max-width: 900px"] {
+    max-width: calc(100vw - 60px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal {
+    max-width: calc(100vw - 32px);
+    border-radius: 8px;
+  }
+  
+  .modal[style*="maxWidth: '900px'"],
+  .modal[style*="max-width: 900px"] {
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff; /* keep header white */
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #2c3e50;
+}
+
+.modal-form {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #7B73FF;
+  box-shadow: 0 0 0 3px rgba(123, 115, 255, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #7B73FF 0%, #5E56E8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(123, 115, 255, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #6A62EE 0%, #4D45D7 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(123, 115, 255, 0.4);
+}
+
+.btn-secondary {
+  background: #e0e0e0;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d0d0d0;
+}
+
+/* Employees Table in Modal */
+.employees-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.employees-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.employees-table thead {
+  background: linear-gradient(135deg, #7B73FF 0%, #5E56E8 100%);
+  color: white;
+}
+
+.employees-table thead th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.employees-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+
+.employees-table tbody tr:hover {
+  background: #f8f9ff;
+}
+
+.employees-table tbody td {
+  padding: 12px;
+  color: #333;
+  vertical-align: middle;
+}
+
+.employee-photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #7B73FF;
+}
+
+.no-photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #7f8c8d;
+  text-align: center;
+}
+
+.status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status.active {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.status.inactive {
+  background: #FFEBEE;
+  color: #C62828;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .departments-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-overlay {
+    padding-left: 80px; /* collapsed sidebar width */
+  }
+
+  .modal-overlay.modal-overlay-shifted {
+    padding-left: 80px;
+    --sidebar-width: 80px;
+  }
+
+  .modal {
+    max-width: calc(100vw - 100px);
+  }
+
+  .department-management .modal-overlay.modal-overlay-shifted .modal,
+  .department-management .modal-overlay .modal {
+    max-width: calc(100vw - 100px);
+  }
+
+  .employees-table {
+    font-size: 12px;
+  }
+
+  .employee-photo,
+  .no-photo {
+    width: 32px;
+    height: 32px;
+  }
+}
