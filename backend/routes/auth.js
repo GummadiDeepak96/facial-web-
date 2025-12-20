@@ -525,21 +525,9 @@ router.post('/employee/forgot-password', [
     }
 
     const { email } = req.body;
-    // Detect which status column exists (status or statusflag)
-    const dbName = require('../config').DB_CONFIG.database;
-    const statusColRows = await db.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_schema = ? AND table_name = 'employees' 
-       AND column_name IN ('status', 'statusflag') LIMIT 1`,
-      [dbName]
-    );
-    const statusCol = statusColRows.length > 0 ? statusColRows[0].column_name : 'statusflag';
-    const statusCondition = statusCol === 'status' 
-      ? `status = 'active'` 
-      : `statusflag = 1`;
 
-    // Find employee using detected status column
-    const employees = await db.query(`SELECT * FROM employees WHERE email = ? AND ${statusCondition}`, [email]);
+    // Find employee
+    const employees = await db.query('SELECT * FROM employees WHERE email = ? AND statusflag = 1', [email]);
     const employee = employees[0];
 
     if (!employee) {
@@ -563,11 +551,7 @@ router.post('/employee/forgot-password', [
 
   } catch (error) {
     console.error('Employee forgot password error:', error);
-    // Surface helpful hint if common schema issue occurs
-    const message = (error && error.code === 'ER_BAD_FIELD_ERROR')
-      ? 'Database schema mismatch: missing status/statusflag column.'
-      : 'Failed to reset password. Please try again later.';
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: 'Failed to reset password. Please try again later.' });
   }
 });
 
