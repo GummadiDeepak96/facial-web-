@@ -237,7 +237,7 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
   width: 100%;
-  max-width: 350px;
+  max-width: 500px;
   min-height: 420px;
   display: flex;
   flex-direction: column;

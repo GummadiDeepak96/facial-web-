@@ -5,36 +5,108 @@
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  
 }
 
 .login-card {
   background: white;
-  border-radius: 10px;
+  border-radius: 16px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-  padding: 30px 50px;
+  padding: 40px 50px;
   width: 100%;
-  max-width: 480px;
+  max-width: 800px;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .login-header h2 {
-  color: #333;
-  margin-bottom: 8px;
-  font-size: 28px;
-  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  font-size: 32px;
+  font-weight: 700;
 }
 
 .login-header p {
-  color: #666;
-  font-size: 14px;
+  color: #888888;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.user-type-selector {
+  margin-bottom: 26px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.user-type-label {
+  display: block;
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.radio-group {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 90px;
+  cursor: pointer;
+  /* padding: 12px 14px; */
+  /* border: 1.5px solid #ccc; */
+  /* border-radius: 10px; */
+  transition: all 0.3s ease;
+  /* background-color: #ffffff; */
+  height: 42px;
+}
+
+.radio-option input[type="radio"] {
+  cursor: pointer;
+  accent-color: #5569d8;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.radio-option span {
+  color: #333333;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.radio-option:hover {
+  border-color: #5569d8;
+  background-color: #f0f3ff;
+}
+
+.radio-option input[type="radio"]:checked {
+  accent-color: #5569d8;
+}
+
+.radio-option input[type="radio"]:checked + span {
+  color: #5569d8;
+  font-weight: 600;
 }
 
 .login-form {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .form-group {
@@ -43,19 +115,34 @@
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  color: #333;
-  font-weight: 500;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
+.required {
+  color: #e74c3c;
+  margin-left: 3px;
+  font-weight: 700;
 }
 
 .form-group input {
   width: 100%;
-  padding: 10px;
-  border: 2px solid #e1e5e9;
+  padding: 11px 13px;
+  border: 1px solid #d5d8de;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   transition: border-color 0.3s ease;
   box-sizing: border-box;
+  color: #333333;
+  background-color: #fafbfc;
+}
+
+.form-group input::placeholder {
+  color: #999999;
 }
 
 .form-group input:focus {
@@ -65,46 +152,66 @@
 
 .login-btn {
   width: 100%;
-  padding: 11px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 13px;
+  background: linear-gradient(135deg, #5569d8 0%, #6b5ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
 }
 
-.login-btn:hover {
-  opacity: 0.9;
+.login-btn:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(85, 105, 216, 0.3);
 }
 
 .login-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
 .login-footer {
   text-align: center;
-  padding-top: 15px;
-  border-top: 1px solid #e1e5e9;
+  padding-top: 14px;
+  border-top: 1px solid #e8eaee;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.login-footer p {
-  margin: 8px 0;
-  color: #666;
-  font-size: 14px;
+.login-footer div {
+  margin: 0;
+  color: #666666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.forgot-password-link {
+  color: #5569d8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.forgot-password-link:hover {
+  text-decoration: underline;
+  opacity: 0.9;
 }
 
 .login-footer a {
-  color: #667eea;
+  color: #5569d8;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .login-footer a:hover {
   text-decoration: underline;
+  opacity: 0.9;
 }
 
 .loading-container {

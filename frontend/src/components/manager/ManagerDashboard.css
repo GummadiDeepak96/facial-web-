@@ -226,11 +226,12 @@
 }
 
 .search-input {
-  padding: 0.6rem 0.75rem 0.6rem 2.5rem;
+  padding: 0.9rem 0.95rem 0.6rem 2.5rem;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 0.9rem;
   width: 300px;
+  gap: 0.5rem;
   transition: all 0.3s ease;
 }
 

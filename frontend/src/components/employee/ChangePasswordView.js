@@ -11,6 +11,7 @@ const ChangePasswordView = () => {
   const [loading, setLoading] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [syncedToManager, setSyncedToManager] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -43,7 +44,7 @@ const ChangePasswordView = () => {
     try {
       const token = sessionStorage.getItem('token');
       
-      await axios.post(
+      const response = await axios.post(
         'http://localhost:8080/api/auth/employee/change-password',
         {
           newPassword: formData.newPassword
@@ -55,13 +56,22 @@ const ChangePasswordView = () => {
         }
       );
 
-      toast.success('Password changed successfully! A confirmation email has been sent.');
+      setSyncedToManager(response.data.syncedToManager);
+      
+      if (response.data.syncedToManager) {
+        toast.success('✅ Password updated for both Employee and Manager accounts!');
+      } else {
+        toast.success('Password changed successfully! A confirmation email has been sent.');
+      }
       
       // Reset form
       setFormData({
         newPassword: '',
         confirmPassword: ''
       });
+      
+      // Clear sync status after 5 seconds
+      setTimeout(() => setSyncedToManager(false), 5000);
     } catch (error) {
       const message = error.response?.data?.error || 'Failed to change password';
       toast.error(message);

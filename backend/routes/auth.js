@@ -390,7 +390,7 @@ router.post('/employee/change-password', [
     // Hash new password
     const hashedNewPassword = await hashPassword(newPassword);
 
-    // Update password
+    // Update employee password
     const updateData = { password: hashedNewPassword };
     const hasUpdatedDateCol = await db.query(
       `SELECT column_name FROM information_schema.columns 
@@ -404,6 +404,29 @@ router.post('/employee/change-password', [
     
     await db.update('employees', updateData, { [pkCol]: employee[pkCol] });
 
+    console.log(`🔄 Syncing password for employee email: ${email}`);
+
+    // Sync password to manager account if email exists
+    let syncedToManager = false;
+    try {
+      const managers = await db.query(
+        'SELECT id FROM managers WHERE email = ?',
+        [email]
+      );
+      
+      if (managers.length > 0) {
+        await db.query(
+          'UPDATE managers SET password = ? WHERE email = ?',
+          [hashedNewPassword, email]
+        );
+        syncedToManager = true;
+        console.log(`✅ Password synced to manager account with email: ${email}`);
+      }
+    } catch (syncErr) {
+      console.error('Error syncing password to manager account:', syncErr);
+      // Don't fail the request if sync fails
+    }
+
     // Send confirmation email
     try {
       const { sendPasswordChangeConfirmation } = require('../utils/emailService');
@@ -413,7 +436,12 @@ router.post('/employee/change-password', [
       // Don't fail the request if email fails
     }
 
-    res.json({ message: 'Password changed successfully' });
+    res.json({ 
+      message: syncedToManager 
+        ? 'Password updated successfully for both Employee and Manager accounts'
+        : 'Employee password updated successfully',
+      syncedToManager
+    });
 
   } catch (error) {
     console.error('Change password error:', error);
@@ -500,12 +528,34 @@ router.post('/manager/forgot-password', [
     // Update password in database
     await db.query('UPDATE managers SET password = ? WHERE email = ?', [hashedPassword, email]);
 
+    // Sync password to employee account if email exists
+    let syncedToEmployee = false;
+    try {
+      const employees = await db.query(
+        'SELECT person_id FROM employees WHERE email = ?',
+        [email]
+      );
+      
+      if (employees.length > 0) {
+        await db.query(
+          'UPDATE employees SET password = ? WHERE email = ?',
+          [hashedPassword, email]
+        );
+        syncedToEmployee = true;
+        console.log(`✅ Forgot password: Password synced to employee account with email: ${email}`);
+      }
+    } catch (syncErr) {
+      console.error('Error syncing forgot password to employee account:', syncErr);
+      // Don't fail the request if sync fails
+    }
+
     // Send email with new password
     await sendPasswordResetEmail(email, manager.name, newPassword, 'Manager');
 
     res.json({ 
       message: 'Password reset email sent successfully. Please check your email.',
-      email: email 
+      email: email,
+      syncedToEmployee
     });
 
   } catch (error) {
@@ -553,12 +603,34 @@ router.post('/employee/forgot-password', [
     // Update password in database
     await db.query('UPDATE employees SET password = ? WHERE email = ?', [hashedPassword, email]);
 
+    // Sync password to manager account if email exists
+    let syncedToManager = false;
+    try {
+      const managers = await db.query(
+        'SELECT id FROM managers WHERE email = ?',
+        [email]
+      );
+      
+      if (managers.length > 0) {
+        await db.query(
+          'UPDATE managers SET password = ? WHERE email = ?',
+          [hashedPassword, email]
+        );
+        syncedToManager = true;
+        console.log(`✅ Forgot password: Password synced to manager account with email: ${email}`);
+      }
+    } catch (syncErr) {
+      console.error('Error syncing forgot password to manager account:', syncErr);
+      // Don't fail the request if sync fails
+    }
+
     // Send email with new password
     await sendPasswordResetEmail(email, employee.name, newPassword, 'Employee');
 
     res.json({ 
       message: 'Password reset email sent successfully. Please check your email.',
-      email: email 
+      email: email,
+      syncedToManager
     });
 
   } catch (error) {

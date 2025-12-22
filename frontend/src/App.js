@@ -4,9 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import AdminLogin from './components/auth/AdminLogin';
-import EmployeeLogin from './components/auth/EmployeeLogin';
-import ManagerLogin from './components/manager/ManagerLogin';
+import Login from './components/auth/Login';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -76,7 +74,7 @@ function AppContent() {
             path="/admin/login" 
             element={
               <PublicRoute>
-                <AdminLogin />
+                <Login />
               </PublicRoute>
             } 
           />
@@ -84,7 +82,7 @@ function AppContent() {
             path="/employee/login" 
             element={
               <PublicRoute>
-                <EmployeeLogin />
+                <Login />
               </PublicRoute>
             } 
           />
@@ -92,7 +90,15 @@ function AppContent() {
             path="/manager/login" 
             element={
               <PublicRoute>
-                <ManagerLogin />
+                <Login />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute>
+                <Login />
               </PublicRoute>
             } 
           />
