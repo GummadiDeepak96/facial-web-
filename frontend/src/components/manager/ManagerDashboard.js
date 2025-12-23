@@ -56,6 +56,10 @@ const ManagerDashboard = () => {
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // Download dropdown state
+  const [showEmployeesDownloadMenu, setShowEmployeesDownloadMenu] = useState(false);
+  const [showReportDownloadMenu, setShowReportDownloadMenu] = useState(false);
+
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
@@ -122,60 +126,88 @@ const ManagerDashboard = () => {
     setCurrentPage(1);
   };
 
-  const handleDownloadEmployeesPDF = () => {
-    if (filteredEmployees.length === 0) {
-      toast.warning('No employees to download');
+  // Helper: download CSV (Excel-compatible)
+  const downloadCSV = (filename, rows, columns) => {
+    if (!rows || rows.length === 0) {
+      toast.warning('No data to download');
       return;
     }
 
-    const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Department Employees Report', 14, 15);
-    
-    // Add department info
-    doc.setFontSize(10);
-    doc.text(`Department: ${stats.departmentName}`, 14, 22);
-    if (selectedRole) {
-      doc.text(`Role: ${selectedRole}`, 14, 27);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
-    } else {
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 27);
+    const cols = columns || Object.keys(rows[0]);
+    const header = cols.join(',');
+    const csvRows = rows.map(row => cols.map(col => {
+      const cell = row[col] === undefined || row[col] === null ? '' : String(row[col]);
+      return '"' + cell.replace(/"/g, '""') + '"';
+    }).join(','));
+
+    const csv = [header, ...csvRows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadEmployees = (type = 'pdf') => {
+    if (filteredEmployees.length === 0) {
+      toast.warning('No employees to download');
+      setShowEmployeesDownloadMenu(false);
+      return;
     }
 
-    // Prepare table data
-    const tableData = filteredEmployees.map((emp, index) => [
-      index + 1,
-      emp.name || 'N/A',
-      emp.email || 'N/A',
-      emp.role || 'N/A',
-      emp.statusflag ? 'Active' : 'Inactive'
-    ]);
+    if (type === 'pdf') {
+      const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Department Employees Report', 14, 15);
+      // Add department info
+      doc.setFontSize(10);
+      doc.text(`Department: ${stats.departmentName}`, 14, 22);
+      if (selectedRole) {
+        doc.text(`Role: ${selectedRole}`, 14, 27);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
+      } else {
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 27);
+      }
 
-    // Add table
-    autoTable(doc, {
-      startY: selectedRole ? 35 : 30,
-      head: [['#', 'Name', 'Email', 'Role', 'Status']],
-      body: tableData,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [102, 126, 234],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-    });
+      const tableData = filteredEmployees.map((emp, index) => [
+        index + 1,
+        emp.name || 'N/A',
+        emp.email || 'N/A',
+        emp.role || 'N/A',
+        emp.statusflag ? 'Active' : 'Inactive'
+      ]);
 
-    // Save PDF
-    doc.save(`department-employees-${stats.departmentName}-${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('PDF downloaded successfully');
+      autoTable(doc, {
+        startY: selectedRole ? 35 : 30,
+        head: [['#', 'Name', 'Email', 'Role', 'Status']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [102, 126, 234], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      doc.save(`department-employees-${stats.departmentName}-${new Date().toISOString().split('T')[0]}.pdf`);
+      setShowEmployeesDownloadMenu(false);
+    } else {
+      // Excel / CSV
+      const rows = filteredEmployees.map((emp, index) => ({
+        '#': index + 1,
+        'Name': emp.name || 'N/A',
+        'Email': emp.email || 'N/A',
+        'Role': emp.role || 'N/A',
+        'Status': emp.statusflag ? 'Active' : 'Inactive'
+      }));
+
+      const columns = ['#', 'Name', 'Email', 'Role', 'Status'];
+      downloadCSV(`department-employees-${stats.departmentName}-${new Date().toISOString().split('T')[0]}.csv`, rows, columns);
+      setShowEmployeesDownloadMenu(false);
+    }
   };
 
   const handleShowReport = async () => {
@@ -204,7 +236,7 @@ const ManagerDashboard = () => {
         };
 
         // Fetch all employees report from PHP database
-        const response = await fetch(`http://localhost:8080/api/php/attendance-report-all?${new URLSearchParams(
+        const response = await fetch(`/api/php/attendance-report-all?${new URLSearchParams(
           Object.entries(params).filter(([_, v]) => v !== undefined)
         )}`);
         
@@ -237,33 +269,27 @@ const ManagerDashboard = () => {
           return;
         }
 
-        // Build proper parameters for get_attendance_summary_api.php
-        const PHP_PERSONS_API = process.env.REACT_APP_PHP_PERSONS_API || 'http://localhost/Realtime_Mysql/get_persons.php';
-        const phpBase = PHP_PERSONS_API.replace('get_persons.php', '');
-        let apiUrl = `${phpBase}get_attendance_summary_api.php?enroll_id=${employee.enroll_id}`;
-        
+        // Build parameters for attendance-summary endpoint served by backend
+        const params = new URLSearchParams();
+        params.append('enroll_id', employee.enroll_id);
+
         if (reportType === 'daily' && selectedDate) {
-          apiUrl += `&date=${selectedDate}`;
+          params.append('date', selectedDate);
         } else if (reportType === 'monthly' && selectedMonth) {
           const [year, month] = selectedMonth.split('-');
-          apiUrl += `&month=${month}&year=${year}`;
+          params.append('month', month);
+          params.append('year', year);
         } else if (reportType === 'custom' && reportStartDate && reportEndDate) {
-          apiUrl += `&start_date=${reportStartDate}&end_date=${reportEndDate}`;
+          params.append('start_date', reportStartDate);
+          params.append('end_date', reportEndDate);
         }
 
+        const apiUrl = `/api/php/attendance-summary?${params.toString()}`;
         console.log('📡 Fetching attendance from:', apiUrl);
 
-        // Fetch from PHP database directly
+        // Fetch from backend (which queries attendance_summary table)
         const response = await fetch(apiUrl);
-        
-        const rawData = await response.text();
-        let records;
-        try {
-          records = JSON.parse(rawData);
-        } catch (e) {
-          console.error('Failed to parse response:', rawData);
-          throw new Error('Invalid response from biometric server');
-        }
+        const records = await response.json();
 
         if (Array.isArray(records)) {
           setReportData({
@@ -290,6 +316,94 @@ const ManagerDashboard = () => {
     }
   };
 
+  // Download report - supports pdf and excel (csv)
+  const handleDownloadReport = async (type = 'pdf') => {
+    if (!selectedReportEmployee) {
+      toast.warning('Please select an employee to download the report');
+      return;
+    }
+
+    setReportLoading(true);
+    try {
+      if (type === 'pdf') {
+        // Reuse existing PDF logic
+        await handleDownloadPDF();
+        setShowReportDownloadMenu(false);
+        setReportLoading(false);
+        return;
+      }
+
+      // Excel/CSV path
+      let records = [];
+
+      if (selectedReportEmployee === 'ALL') {
+        const params = {
+          reportType,
+          date: reportType === 'daily' ? selectedDate : undefined,
+          month: reportType === 'monthly' ? selectedMonth : undefined,
+          startDate: reportType === 'custom' ? reportStartDate : undefined,
+          endDate: reportType === 'custom' ? reportEndDate : undefined,
+          departmentId: stats.departmentId,
+          roleId: selectedRole || undefined,
+        };
+
+        const resp = await fetch(`/api/php/attendance-report-all?${new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined))}`);
+        const data = await resp.json();
+        if (data && data.success && Array.isArray(data.records)) records = data.records;
+      } else {
+        const employee = stats.employees.find(emp => emp.enroll_id === parseInt(selectedReportEmployee));
+        if (!employee) {
+          toast.error('Employee not found');
+          setReportLoading(false);
+          return;
+        }
+
+        const params = new URLSearchParams();
+        params.append('enroll_id', employee.enroll_id);
+
+        if (reportType === 'daily' && selectedDate) {
+          params.append('date', selectedDate);
+        } else if (reportType === 'monthly' && selectedMonth) {
+          const [year, month] = selectedMonth.split('-');
+          params.append('month', month);
+          params.append('year', year);
+        } else if (reportType === 'custom' && reportStartDate && reportEndDate) {
+          params.append('start_date', reportStartDate);
+          params.append('end_date', reportEndDate);
+        }
+
+        const resp = await fetch(`/api/php/attendance-summary?${params.toString()}`);
+        const data = await resp.json();
+        if (Array.isArray(data)) records = data;
+      }
+
+      if (!records || records.length === 0) {
+        toast.warning('No records to download');
+        setShowReportDownloadMenu(false);
+        setReportLoading(false);
+        return;
+      }
+
+      const first = records[0];
+      const cols = ['date','enroll_id','employee_name','department','role','status','first_in','last_out','late_status'];
+      const rows = records.map(r => {
+        return cols.reduce((acc, k) => {
+          acc[k] = r[k] ?? r[k.toLowerCase()] ?? '';
+          return acc;
+        }, {});
+      });
+
+      const filename = `attendance-report-${selectedReportEmployee === 'ALL' ? 'all-employees' : selectedReportEmployee}-${reportType}-${new Date().toISOString().split('T')[0]}.csv`;
+      downloadCSV(filename, rows, cols);
+      setShowReportDownloadMenu(false);
+    } catch (error) {
+      console.error('Failed to download Excel report:', error);
+      toast.error('Failed to download Excel report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!selectedReportEmployee) {
       toast.warning('Please select an employee to download the report');
@@ -297,8 +411,6 @@ const ManagerDashboard = () => {
     }
 
     try {
-      toast.info('Generating PDF report...');
-      
       let url;
       if (selectedReportEmployee === 'ALL') {
         // All employees PDF
@@ -312,7 +424,7 @@ const ManagerDashboard = () => {
           roleId: selectedRole || undefined,
         };
 
-        url = `http://localhost:8080/api/php/attendance-report-all/download?${new URLSearchParams(
+        url = `/api/php/attendance-report-all/download?${new URLSearchParams(
           Object.entries(params).filter(([_, v]) => v !== undefined)
         )}`;
       } else {
@@ -326,7 +438,7 @@ const ManagerDashboard = () => {
           enrollId: selectedReportEmployee,
         };
 
-        url = `http://localhost:8080/api/php/attendance-report/download?${new URLSearchParams(
+        url = `/api/php/attendance-report/download?${new URLSearchParams(
           Object.entries(params).filter(([_, v]) => v !== undefined)
         )}`;
       }
@@ -348,7 +460,6 @@ const ManagerDashboard = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
-      toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('Failed to download PDF:', error);
       toast.error('Failed to download PDF');
@@ -562,10 +673,28 @@ const ManagerDashboard = () => {
     <div className="employees-section">
       <div className="employees-header-row">
         <h3>Department Employees</h3>
-        <button onClick={handleDownloadEmployeesPDF} className="download-employees-btn">
-          <Download size={18} />
-          Download PDF
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowEmployeesDownloadMenu(!showEmployeesDownloadMenu)}
+            className="download-employees-btn"
+          >
+            <Download size={18} />
+            Download Report ▾
+          </button>
+
+          {showEmployeesDownloadMenu && (
+            <div className="download-dropdown-menu">
+              <button onClick={() => handleDownloadEmployees('pdf')} className="dropdown-item">
+                <FileText size={16} />
+                Download PDF
+              </button>
+              <button onClick={() => handleDownloadEmployees('excel')} className="dropdown-item">
+                <FileText size={16} />
+                Download Excel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="search-controls">
@@ -817,11 +946,24 @@ const ManagerDashboard = () => {
             </div>
           </div>
 
-          <div className="report-actions">
-            <button onClick={handleDownloadPDF} className="download-pdf-btn">
+          <div className="report-actions" style={{ position: 'relative' }}>
+            <button onClick={() => setShowReportDownloadMenu(!showReportDownloadMenu)} className="download-pdf-btn">
               <Download size={18} />
-              Download PDF
+              Download Report ▾
             </button>
+
+            {showReportDownloadMenu && (
+              <div className="download-dropdown-menu">
+              <button onClick={() => handleDownloadReport('pdf')} className="dropdown-item">
+                <FileText size={16} />
+                Download PDF
+              </button>
+              <button onClick={() => handleDownloadReport('excel')} className="dropdown-item">
+                <FileText size={16} />
+                Download Excel
+              </button>
+            </div>
+            )}
           </div>
 
           <div className="table-container">

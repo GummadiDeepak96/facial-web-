@@ -34,7 +34,7 @@ const AttendanceView = () => {
       console.log(`📊 Fetching attendance for enroll_id: ${userData.enroll_id}, Month: ${selectedMonth}, Year: ${selectedYear}`);
 
       // Fetch attendance from backend employee API
-      const url = `http://localhost:8080/api/employee/attendance?month=${selectedMonth}&year=${selectedYear}`;
+      const url = `/api/employee/attendance?month=${selectedMonth}&year=${selectedYear}`;
       console.log('🌐 API URL:', url);
       
       const response = await fetch(url, {

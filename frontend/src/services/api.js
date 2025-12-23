@@ -1,6 +1,8 @@
 import axios from 'axios';
+import config from '../config/environment';
 
-const BASE_URL = 'http://localhost:8080/api';
+// Get base URL from configuration (environment variable or fallback)
+const BASE_URL = config.API.BASE_URL;
 
 // Create axios instance
 const api = axios.create({
@@ -8,6 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: config.API.TIMEOUT,
 });
 
 // Request interceptor to add auth token

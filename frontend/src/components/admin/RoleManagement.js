@@ -511,7 +511,16 @@ const RoleManagement = () => {
                                 <Edit size={16} />
                               </button>
 
-                              <button className="btn-icon btn-delete" onClick={() => handleDeleteEmployee(employee)}>
+                              <button 
+                                className="btn-icon btn-delete" 
+                                onClick={() => handleDeleteEmployee(employee)}
+                                disabled={selectedRole?.rolename === 'Admin' && roleEmployees.length === 1}
+                                title={selectedRole?.rolename === 'Admin' && roleEmployees.length === 1 ? "Cannot delete the last Admin" : "Delete employee"}
+                                style={{
+                                  opacity: selectedRole?.rolename === 'Admin' && roleEmployees.length === 1 ? 0.4 : 1,
+                                  cursor: selectedRole?.rolename === 'Admin' && roleEmployees.length === 1 ? 'not-allowed' : 'pointer'
+                                }}
+                              >
                                 <Trash2 size={16} />
                               </button>
                             </td>

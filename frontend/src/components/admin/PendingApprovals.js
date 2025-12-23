@@ -171,21 +171,7 @@ const PendingApprovals = () => {
                   <tr key={person.id} style={{ transition: 'all 0.2s' }}>
                     <td><strong>#{person.id}</strong></td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 'bold',
-                          fontSize: '14px'
-                        }}>
-                          {person.name ? person.name.charAt(0).toUpperCase() : '?'}
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
                         <strong>{person.name || 'Unknown'}</strong>
                       </div>
                     </td>
