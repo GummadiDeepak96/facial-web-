@@ -590,10 +590,16 @@ const ManagerDashboard = () => {
 
     try {
       setPasswordLoading(true);
-      await managerAPI.changePassword(
+      const response = await managerAPI.changePassword(
         passwordData.newPassword
       );
-      toast.success('Password changed successfully');
+      
+      if (response.data.syncedToEmployee) {
+        toast.success('✅ Password updated for both Manager and Employee accounts!');
+      } else {
+        toast.success('Manager password changed successfully');
+      }
+      
       setShowPasswordModal(false);
       setPasswordData({
         newPassword: '',

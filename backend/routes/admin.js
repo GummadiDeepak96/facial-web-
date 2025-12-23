@@ -1224,6 +1224,86 @@ router.post('/roles', authenticateAdmin, [
   }
 });
 
+// Delete Department
+router.delete('/departments/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Department ID is required' });
+    }
+
+    // Check if department exists
+    const department = await db.findOne('departments', { id });
+    if (!department) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+
+    // Check if any employees have this department
+    const employeeCount = await db.query(
+      'SELECT COUNT(*) as count FROM employees WHERE department = ?',
+      [department.departmentname]
+    );
+
+    if (employeeCount[0].count > 0) {
+      return res.status(409).json({ 
+        error: `Cannot delete department. ${employeeCount[0].count} employee(s) are assigned to this department.` 
+      });
+    }
+
+    // Delete the department
+    await db.query('DELETE FROM departments WHERE id = ?', [id]);
+
+    res.json({ 
+      message: 'Department deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete department error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete Role
+router.delete('/roles/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Role ID is required' });
+    }
+
+    // Check if role exists
+    const role = await db.findOne('roles', { id });
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    // Check if any employees have this role
+    const employeeCount = await db.query(
+      'SELECT COUNT(*) as count FROM employees WHERE role = ?',
+      [role.rolename]
+    );
+
+    if (employeeCount[0].count > 0) {
+      return res.status(409).json({ 
+        error: `Cannot delete role. ${employeeCount[0].count} employee(s) have this role.` 
+      });
+    }
+
+    // Delete the role
+    await db.query('DELETE FROM roles WHERE id = ?', [id]);
+
+    res.json({ 
+      message: 'Role deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete role error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get Attendance Records
 router.get('/attendance', authenticateAdmin, async (req, res) => {
   try {

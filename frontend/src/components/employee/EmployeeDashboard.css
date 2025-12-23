@@ -156,14 +156,14 @@ html, body {
 }
 
 .emp-dash-sidebar-header {
-  padding: 50px 30px 40px;
+  padding: 30px 25px 25px;
   text-align: left;
 }
 
 .emp-dash-sidebar-header h2 {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: white;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: 0.3px;
 }
@@ -177,13 +177,18 @@ html, body {
 
 .emp-dash-sidebar-nav {
   flex: 1;
-  padding: 20px 0;
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .emp-dash-sidebar-nav ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .emp-dash-sidebar-nav li {
@@ -290,39 +295,39 @@ html, body {
 }
 
 .emp-dash-user-info {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
 .emp-dash-user-info p {
-  margin: 0 0 3px 0;
+  margin: 0 0 2px 0;
   color: white;
   font-weight: 600;
-  font-size: 17px;
+  font-size: 15px;
 }
 
 .emp-dash-user-info small {
   display: block;
   color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
-  margin-bottom: 2px;
+  font-size: 12px;
+  margin-bottom: 0px;
   font-weight: 300;
 }
 
 .emp-dash-logout-btn {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   background: #FF4757;
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
 }

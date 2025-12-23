@@ -707,11 +707,34 @@ router.post('/change-password', authenticateManager, async (req, res) => {
     const { hashPassword } = require('../auth');
     const hashedPassword = await hashPassword(newPassword);
 
-    // Update password
+    // Update manager password
     await db.query(
       'UPDATE managers SET password = ? WHERE id = ?',
       [hashedPassword, managerId]
     );
+
+    console.log(`🔄 Syncing password for manager email: ${manager.email}`);
+
+    // Sync password to employee account if email exists
+    let syncedToEmployee = false;
+    try {
+      const employees = await db.query(
+        'SELECT person_id FROM employees WHERE email = ?',
+        [manager.email]
+      );
+      
+      if (employees.length > 0) {
+        await db.query(
+          'UPDATE employees SET password = ? WHERE email = ?',
+          [hashedPassword, manager.email]
+        );
+        syncedToEmployee = true;
+        console.log(`✅ Password synced to employee account with email: ${manager.email}`);
+      }
+    } catch (syncErr) {
+      console.error('Error syncing password to employee account:', syncErr);
+      // Don't fail the request if sync fails
+    }
 
     // Send confirmation email if email service is available
     try {
@@ -722,7 +745,12 @@ router.post('/change-password', authenticateManager, async (req, res) => {
       // Don't fail the request if email fails
     }
 
-    res.json({ message: 'Password changed successfully' });
+    res.json({ 
+      message: syncedToEmployee 
+        ? 'Password updated successfully for both Manager and Employee accounts' 
+        : 'Manager password updated successfully',
+      syncedToEmployee
+    });
 
   } catch (error) {
     console.error('Manager change password error:', error);

@@ -13,17 +13,9 @@ const HomePage = () => {
             <h1>Employee Management System</h1>
           </div>
           <nav className="main-nav">
-            <Link to="/admin/login" className="nav-link">
+            <Link to="/login" className="nav-link">
               <Shield size={20} />
-              Admin Login
-            </Link>
-            <Link to="/manager/login" className="nav-link">
-              <BarChart3 size={20} />
-              Manager Login
-            </Link>
-            <Link to="/employee/login" className="nav-link">
-              <Users size={20} />
-              Employee Login
+              Login
             </Link>
           </nav>
         </div>
@@ -71,19 +63,19 @@ const HomePage = () => {
                 </div>
               </div> */}
               <div className="feature-grid">
-                <Link to="/admin/login" className="feature-card">
+                <Link to="/login" className="feature-card">
                   <Users size={48} />
                   <h3>Employee Management</h3>
                   <p>Manage employee data, roles, and departments</p>
                 </Link>
 
-                <Link to="/employee/login" className="feature-card">
+                <Link to="/login" className="feature-card">
                   <Clock size={48} />
                   <h3>Attendance Tracking</h3>
                   <p>Real-time attendance with biometric integration</p>
                 </Link>
 
-                <Link to="/employee/login" className="feature-card">
+                <Link to="/login" className="feature-card">
                   <BarChart3 size={48} />
                   <h3>Analytics & Reports</h3>
                   <p>Comprehensive reporting and analytics</p>
