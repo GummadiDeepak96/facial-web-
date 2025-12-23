@@ -75,7 +75,6 @@ const AttendanceReport = () => {
   const handleShowReport = async () => {
     // Validate custom date range
     if (reportType === 'custom' && new Date(startDate) > new Date(endDate)) {
-      toast.warning('Start date cannot be after end date');
       return;
     }
 
@@ -111,7 +110,6 @@ const AttendanceReport = () => {
           console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: 'All Employees', enrollId: 'ALL' });
         } else {
-          toast.error('Failed to fetch attendance report');
         }
       } else {
         // Single employee report
@@ -121,7 +119,6 @@ const AttendanceReport = () => {
         console.log('🔍 Selected enroll_id:', selectedEmployee);
         
         if (!employee) {
-          toast.error('Employee not found');
           setLoading(false);
           return;
         }
@@ -140,12 +137,10 @@ const AttendanceReport = () => {
           console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: employeeName, enrollId: employee.enroll_id });
         } else {
-          toast.error('Failed to fetch attendance report');
         }
       }
     } catch (error) {
       console.error('Failed to fetch report:', error);
-      toast.error('Failed to fetch report from biometric system');
     } finally {
       setLoading(false);
     }
@@ -155,12 +150,10 @@ const AttendanceReport = () => {
     console.log('🔍 PDF Download - reportData:', reportData);
     
     if (!reportData) {
-      toast.warning('No report data available. Please generate a report first.');
       return;
     }
     
     if (!reportData.records || reportData.records.length === 0) {
-      toast.warning('No attendance records to generate PDF');
       return;
     }
 
@@ -275,7 +268,6 @@ const AttendanceReport = () => {
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       console.error('Error stack:', error.stack);
-      toast.error('Failed to generate PDF: ' + error.message);
     }
   };
 
@@ -283,12 +275,10 @@ const AttendanceReport = () => {
     console.log('🔍 Excel Download - reportData:', reportData);
     
     if (!reportData) {
-      toast.warning('No report data available. Please generate a report first.');
       return;
     }
     
     if (!reportData.records || reportData.records.length === 0) {
-      toast.warning('No attendance records to generate Excel');
       return;
     }
 
@@ -361,7 +351,6 @@ const AttendanceReport = () => {
       console.log('✅ Excel file saved:', fileName);
     } catch (error) {
       console.error('❌ Excel generation error:', error);
-      toast.error('Failed to generate Excel report: ' + error.message);
     }
   };
 
@@ -577,7 +566,7 @@ const AttendanceReport = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             maxHeight: '600px'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
               <thead style={{ background: '#f8fafc' }}>
                 <tr>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Employee</th>

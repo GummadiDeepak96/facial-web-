@@ -471,5 +471,3 @@ router.get('/attendance-report-all/download', async (req, res) => {
 });
 
 module.exports = router;
-
-

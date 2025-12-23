@@ -528,7 +528,6 @@ if (empCopy.status) {
 
   const handleDownloadSelected = () => {
     if (selectedEmployees.length === 0) {
-      toast.warning('Please select at least one employee to download');
       return;
     }
     generateSelectedPDF();
@@ -541,7 +540,6 @@ if (empCopy.status) {
     });
 
     if (selectedData.length === 0) {
-      toast.warning('No employee data found for selected records');
       return;
     }
 
@@ -651,7 +649,6 @@ if (empCopy.status) {
     console.log('=== PDF Generation Filter Complete ===');
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 
@@ -746,7 +743,6 @@ if (empCopy.status) {
     });
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 

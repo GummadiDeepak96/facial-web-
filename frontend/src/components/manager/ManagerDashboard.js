@@ -5,6 +5,7 @@ import { managerAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { 
   Users, 
   UserCheck, 
@@ -16,7 +17,8 @@ import {
   BarChart3,
   Search,
   Download,
-  Key
+  Key,
+  ChevronDown
 } from 'lucide-react';
 import './ManagerDashboard.css';
 
@@ -55,6 +57,8 @@ const ManagerDashboard = () => {
     confirmPassword: ''
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
+  const [showEmployeesDropdown, setShowEmployeesDropdown] = useState(false);
 
   // Download dropdown state
   const [showEmployeesDownloadMenu, setShowEmployeesDownloadMenu] = useState(false);
@@ -102,6 +106,22 @@ const ManagerDashboard = () => {
       fetchAttendanceByDate();
     }
   }, [attendanceDate, activeTab, fetchAttendanceByDate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDownloadDropdown && !event.target.closest('.download-dropdown-container')) {
+        setShowDownloadDropdown(false);
+      }
+      if (showEmployeesDropdown && !event.target.closest('.employees-dropdown-container')) {
+        setShowEmployeesDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDownloadDropdown, showEmployeesDropdown]);
 
   const handleStatusToggle = async (employeeId, currentStatus) => {
     try {
@@ -251,9 +271,7 @@ const ManagerDashboard = () => {
             department: stats.departmentName,
             role: selectedRole || 'All Roles',
           });
-          toast.success('All employees report generated successfully');
         } else {
-          toast.error(data.message || 'Failed to fetch report');
         }
       } else {
         // Single employee report
@@ -303,14 +321,11 @@ const ManagerDashboard = () => {
             role: employee.role,
             shift: employee.shift,
           });
-          toast.success('Report generated successfully');
         } else {
-          toast.error('No records found');
         }
       }
     } catch (error) {
       console.error('Failed to fetch report:', error);
-      toast.error(error.response?.data?.error || 'Failed to fetch report from biometric system');
     } finally {
       setReportLoading(false);
     }
@@ -447,7 +462,6 @@ const ManagerDashboard = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Failed to generate PDF');
         return;
       }
 
@@ -462,8 +476,73 @@ const ManagerDashboard = () => {
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Failed to download PDF:', error);
-      toast.error('Failed to download PDF');
     }
+    setShowDownloadDropdown(false);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!reportData || !reportData.records || reportData.records.length === 0) {
+      return;
+    }
+
+    try {
+
+      // Prepare data for Excel
+      const excelData = reportData.records.map((record, index) => {
+        const row = {};
+        
+        if (reportData.enrollId === 'ALL') {
+          row['#'] = index + 1;
+          row['Employee Name'] = record.employeeName || 'N/A';
+          row['Enroll ID'] = `EMP${String(record.enroll_id).padStart(3, '0')}`;
+        } else {
+          row['#'] = index + 1;
+        }
+        
+        row['Department'] = record.department || reportData.department || 'N/A';
+        row['Role'] = record.role || reportData.role || 'N/A';
+        row['Shift'] = reportData.shift || 'N/A';
+        row['Date'] = record.date ? new Date(record.date).toLocaleDateString() : 'N/A';
+        row['Status'] = record.status === 'P' ? 'Present' : record.status === 'A' ? 'Absent' : record.status || 'N/A';
+        row['First In'] = record.first_in || 'N/A';
+        row['Last Out'] = record.last_out || 'N/A';
+        row['Late Status'] = record.late_status || 'On Time';
+        
+        return row;
+      });
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const columnWidths = [
+        { wch: 5 },  // #
+        { wch: 20 }, // Employee Name or Department
+        { wch: 15 }, // Enroll ID or Role
+        { wch: 15 }, // Department or Shift
+        { wch: 15 }, // Role or Date
+        { wch: 12 }, // Shift or Status
+        { wch: 12 }, // Date or First In
+        { wch: 10 }, // Status or Last Out
+        { wch: 12 }, // First In or Late Status
+        { wch: 12 }, // Last Out
+        { wch: 12 }  // Late Status
+      ];
+      ws['!cols'] = columnWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+
+      // Generate filename
+      const filename = `attendance-report-${reportData.enrollId === 'ALL' ? 'all-employees' : reportData.enrollId}-${reportType}-${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Failed to download Excel:', error);
+    }
+    setShowDownloadDropdown(false);
   };
 
   const handleClearReportFilters = () => {

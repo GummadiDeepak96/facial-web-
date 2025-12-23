@@ -193,6 +193,14 @@ function AppContent() {
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          style={{
+            width: '320px',
+            fontSize: '14px'
+          }}
+          toastStyle={{
+            padding: '12px',
+            minHeight: '50px'
+          }}
         />
       </div>
     </Router>
