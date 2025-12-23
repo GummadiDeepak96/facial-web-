@@ -104,11 +104,11 @@
   color: white;
 }
 
-/* .btn-show-report:hover {
+.btn-show-report:hover {
   background: #0b7dda;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
-} */
+}
 
 .btn-clear {
   padding: 12px 24px;

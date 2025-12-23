@@ -75,7 +75,6 @@ const AttendanceReport = () => {
   const handleShowReport = async () => {
     // Validate custom date range
     if (reportType === 'custom' && new Date(startDate) > new Date(endDate)) {
-      toast.warning('Start date cannot be after end date');
       return;
     }
 
@@ -106,12 +105,9 @@ const AttendanceReport = () => {
             employeeName: 'All Employees',
             enrollId: 'ALL',
           });
-          toast.success(`Found ${response.data.records.length} attendance records`);
         } else if (response.data && response.data.message) {
-          toast.info(response.data.message);
           setReportData({ records: [], count: 0, employeeName: 'All Employees', enrollId: 'ALL' });
         } else {
-          toast.error('Failed to fetch attendance report');
         }
       } else {
         // Single employee report
@@ -121,7 +117,6 @@ const AttendanceReport = () => {
         console.log('🔍 Selected enroll_id:', selectedEmployee);
         
         if (!employee) {
-          toast.error('Employee not found');
           setLoading(false);
           return;
         }
@@ -135,17 +130,13 @@ const AttendanceReport = () => {
             employeeName: employeeName,
             enrollId: employee.enroll_id,
           });
-          toast.success(`Found ${response.data.records.length} attendance records for ${employeeName}`);
         } else if (response.data && response.data.message) {
-          toast.info(response.data.message);
           setReportData({ records: [], count: 0, employeeName: employeeName, enrollId: employee.enroll_id });
         } else {
-          toast.error('Failed to fetch attendance report');
         }
       }
     } catch (error) {
       console.error('Failed to fetch report:', error);
-      toast.error('Failed to fetch report from biometric system');
     } finally {
       setLoading(false);
     }
@@ -155,12 +146,10 @@ const AttendanceReport = () => {
     console.log('🔍 PDF Download - reportData:', reportData);
     
     if (!reportData) {
-      toast.warning('No report data available. Please generate a report first.');
       return;
     }
     
     if (!reportData.records || reportData.records.length === 0) {
-      toast.warning('No attendance records to generate PDF');
       return;
     }
 
@@ -272,11 +261,9 @@ const AttendanceReport = () => {
       doc.save(fileName);
       
       console.log('✅ PDF saved:', fileName);
-      toast.success('PDF downloaded successfully!');
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       console.error('Error stack:', error.stack);
-      toast.error('Failed to generate PDF: ' + error.message);
     }
   };
 
@@ -284,12 +271,10 @@ const AttendanceReport = () => {
     console.log('🔍 Excel Download - reportData:', reportData);
     
     if (!reportData) {
-      toast.warning('No report data available. Please generate a report first.');
       return;
     }
     
     if (!reportData.records || reportData.records.length === 0) {
-      toast.warning('No attendance records to generate Excel');
       return;
     }
 
@@ -360,10 +345,8 @@ const AttendanceReport = () => {
       XLSX.writeFile(workbook, fileName);
 
       console.log('✅ Excel file saved:', fileName);
-      toast.success('Excel report downloaded successfully!');
     } catch (error) {
       console.error('❌ Excel generation error:', error);
-      toast.error('Failed to generate Excel report: ' + error.message);
     }
   };
 
@@ -579,11 +562,12 @@ const AttendanceReport = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             maxHeight: '600px'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
               <thead style={{ background: '#f8fafc' }}>
                 <tr>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Employee</th>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Department</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Role</th>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date</th>
                   <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Status</th>
                   <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Check In</th>
@@ -602,30 +586,16 @@ const AttendanceReport = () => {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
                       <td style={{ padding: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            {record.name ? record.name.charAt(0).toUpperCase() : '?'}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{record.name || 'N/A'}</div>
-                            <div style={{ fontSize: '13px', color: '#64748b' }}>{record.email || 'No email'}</div>
-                          </div>
+                        <div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>{record.name || 'N/A'}</div>
+                          <div style={{ fontSize: '13px', color: '#64748b' }}>{record.email || 'No email'}</div>
                         </div>
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div>{record.department || 'N/A'}</div>
-                        <div style={{ fontSize: '13px', color: '#94a3b8' }}>{record.role || ''}</div>
+                      </td>
+                      <td style={{ padding: '16px', color: '#475569' }}>
+                        <div>{record.role || 'N/A'}</div>
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div style={{ fontWeight: '500' }}>
@@ -701,7 +671,7 @@ const AttendanceReport = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" style={{ 
+                    <td colSpan="8" style={{ 
                       padding: '48px',
                       textAlign: 'center',
                       color: '#94a3b8'

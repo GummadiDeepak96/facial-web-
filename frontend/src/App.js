@@ -185,7 +185,7 @@ function AppContent() {
 
         <ToastContainer
           position="top-right"
-          autoClose={3000}
+          autoClose={100}
           hideProgressBar={false}
           newestOnTop={false}
           closeOnClick
@@ -193,6 +193,14 @@ function AppContent() {
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          style={{
+            width: '320px',
+            fontSize: '14px'
+          }}
+          toastStyle={{
+            padding: '12px',
+            minHeight: '50px'
+          }}
         />
       </div>
     </Router>

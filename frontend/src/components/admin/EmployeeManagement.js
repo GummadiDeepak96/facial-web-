@@ -528,7 +528,6 @@ if (empCopy.status) {
 
   const handleDownloadSelected = () => {
     if (selectedEmployees.length === 0) {
-      toast.warning('Please select at least one employee to download');
       return;
     }
     generateSelectedPDF();
@@ -541,7 +540,6 @@ if (empCopy.status) {
     });
 
     if (selectedData.length === 0) {
-      toast.warning('No employee data found for selected records');
       return;
     }
 
@@ -604,7 +602,6 @@ if (empCopy.status) {
     const fileName = `selected_employees_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     setSelectedEmployees([]);
     setSelectAll(false);
   };
@@ -652,7 +649,6 @@ if (empCopy.status) {
     console.log('=== PDF Generation Filter Complete ===');
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 
@@ -731,7 +727,6 @@ if (empCopy.status) {
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     handleCloseDownloadModal();
   };
 
@@ -748,7 +743,6 @@ if (empCopy.status) {
     });
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 
@@ -798,7 +792,6 @@ if (empCopy.status) {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    toast.success('Excel downloaded successfully');
     handleCloseDownloadModal();
   };
 
