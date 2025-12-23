@@ -348,11 +348,12 @@ router.get('/pending-persons', authenticateAdmin, async (req, res) => {
   try {
     console.log('📋 Fetching pending persons for admin approval...');
     
+    // Return all person rows not yet linked to an employee (do not require embedding_json)
     const pendingPersons = await db.query(
       `SELECT p.* 
        FROM person p
        LEFT JOIN employees e ON p.id = e.person_id
-       WHERE e.person_id IS NULL AND p.embedding_json IS NOT NULL
+       WHERE e.person_id IS NULL
        ORDER BY p.created_at DESC`
     );
 
@@ -1018,7 +1019,7 @@ router.put('/employees/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Delete Employee
+// Delete Employee (hard delete with transactional cleanup)
 router.delete('/employees/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1031,26 +1032,53 @@ router.delete('/employees/:id', authenticateAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Set status to 'inactive' instead of deleting
-    await db.update('employees', 
-      { status: 'inactive', updated_date: new Date() }, 
-      { [pk]: id }
-    );
+    // Determine enroll identifier(s) to remove attendance rows (cover common column names)
+    const enrollCandidates = [
+      employee.enroll_id,
+      employee.employeeid,
+      employee.employee_id,
+      employee.enrollId,
+      employee[pk]
+    ].filter(v => v !== undefined && v !== null);
 
-    // If employee was a manager, remove from managers table
+    // Determine person id if available
+    const personId = employee.person_id || employee.personId || null;
+
+    // Build transactional queries to remove related data safely
+    const queries = [];
+
+    // Remove attendance_summary rows for known enroll identifiers
+    for (const val of enrollCandidates) {
+      queries.push({ sql: 'DELETE FROM attendance_summary WHERE enroll_id = ?', params: [val] });
+    }
+
+    // Remove employee row
+    queries.push({ sql: `DELETE FROM employees WHERE ${pk} = ?`, params: [id] });
+
+    // Remove manager entry if present
     if (employee.email) {
-      try {
-        await db.query('DELETE FROM managers WHERE email = ?', [employee.email]);
-      } catch (err) {
-        console.log('No manager record to delete or error:', err.message);
+      queries.push({ sql: 'DELETE FROM managers WHERE email = ?', params: [employee.email] });
+    }
+
+    // Remove person row if it exists and is not referenced by any other employee
+    if (personId) {
+      const otherEmps = await db.findMany('employees', { person_id: personId }, 'id');
+      if (!otherEmps || otherEmps.length <= 1) {
+        queries.push({ sql: 'DELETE FROM person WHERE id = ?', params: [personId] });
+      } else {
+        console.log(`Skipping deletion of person ${personId} because it is referenced by other employees`);
       }
     }
 
-    res.json({ message: 'Employee deactivated successfully' });
+    // Execute all deletes in a single transaction for safety
+    await db.transaction(queries);
+
+    console.log(`✅ Employee (id=${id}) and related data deleted successfully`);
+    res.json({ message: 'Employee and related data deleted successfully' });
 
   } catch (error) {
-    console.error('Delete employee error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error('Delete employee error:', error.message || error);
+    res.status(500).json({ error: 'Failed to delete employee and related data' });
   }
 });
 

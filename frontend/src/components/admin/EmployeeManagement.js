@@ -604,7 +604,6 @@ if (empCopy.status) {
     const fileName = `selected_employees_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     setSelectedEmployees([]);
     setSelectAll(false);
   };
@@ -731,7 +730,6 @@ if (empCopy.status) {
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     handleCloseDownloadModal();
   };
 
@@ -798,7 +796,6 @@ if (empCopy.status) {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    toast.success('Excel downloaded successfully');
     handleCloseDownloadModal();
   };
 

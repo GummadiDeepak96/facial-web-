@@ -60,7 +60,7 @@
 ### Step 2: Admin Sees Pending List
 - Admin logs in successfully
 - Calls `/api/admin/pending-persons`
-- Sees list of people who registered but aren't employees yet
+- Sees list of people who registered but aren't employees yet (now includes all unlinked person rows regardless of `embedding_json`)
 - Shows: name, photo, registration location, date
 
 ### Step 3: Admin Approves Person

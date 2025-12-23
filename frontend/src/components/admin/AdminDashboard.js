@@ -38,10 +38,9 @@ const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  // PHP persons API - returns JSON array of persons
-  const PHP_PERSONS_API = process.env.REACT_APP_PHP_PERSONS_API || 'http://localhost/Realtime_Mysql/get_persons.php';
-  // PHP attendance summary API - optional. If not provided we try to derive it from PHP_PERSONS_API
-  const PHP_ATT_SUMMARY_API = process.env.REACT_APP_PHP_ATT_SUMMARY_API || PHP_PERSONS_API.replace('get_persons.php', 'attendance_summary.php');
+  // Realtime data endpoints (served from backend; queries local DB directly)
+  const REALTIME_PERSONS_API = '/api/php/persons';
+  const REALTIME_ATT_SUMMARY_API = '/api/php/attendance-summary';
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'dashboard';
@@ -88,10 +87,10 @@ const fetchSummary = async (type) => {
     // Only use PHP persons API for My Contacts
     let persons = [];
     try {
-      const resp = await fetch(PHP_PERSONS_API);
+      const resp = await fetch(REALTIME_PERSONS_API);
       if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`);
       const json = await resp.json();
-      console.log('Raw PHP API response:', json);  // Debug log
+      console.log('Raw Realtime DB response:', json);  // Debug log
 
       // Handle different response formats
       if (json && json.data && Array.isArray(json.data)) {
@@ -186,8 +185,11 @@ const fetchSummary = async (type) => {
       
       // Get actual pending count directly from backend API
       const actualPendingCount = pendingRes.data?.length || 0;
+      const combinedPending = actualPendingCount + pendingCount;
       
       console.log('🔢 Pending persons from backend API:', actualPendingCount);
+      console.log('🔢 Pending employees from employees table:', pendingCount);
+      console.log('🔢 Combined pending count:', combinedPending);
       
       console.log('📊 Dashboard Counts:', {
         personsFromPHP: persons.length,
@@ -196,11 +198,12 @@ const fetchSummary = async (type) => {
         activeEmployees: activeCount,
         pendingEmployees: pendingCount,
         actualPendingCount: actualPendingCount,
+        combinedPending: combinedPending,
         inactiveEmployees: inactiveCount,
         totalContacts: totalContacts
       });
 
-      const preview = persons.slice(0, 10).map((p, idx) => ({
+      let preview = persons.slice(0, 10).map((p, idx) => ({
         sno: p.id || p.enroll_id || idx + 1,
         employee_name: p.name || p.fullname || `Person ${idx + 1}`,
         departmentname: p.roll_id === '0' ? 'Staff' : 'Other',
@@ -210,26 +213,54 @@ const fetchSummary = async (type) => {
         device_accessed: ''
       }));
 
-      // Try to fetch attendance summary from the realtime PHP DB (tolerant)
+      // Try to fetch attendance summary for TODAY from the realtime DB (tolerant)
+      const today = new Date().toISOString().split('T')[0];
       let presentToday = baseStats.presentToday || 0;
       let absentToday = baseStats.absentToday || 0;
       try {
-        // Use backend proxy to avoid CORS issues. Backend will in turn request the PHP API.
-        const attResp = await fetch('/api/php/attendance-summary');
+        // Use backend proxy to avoid CORS issues. Backend will query the attendance_summary table for today's records.
+        const attResp = await fetch(`/api/php/attendance-summary?date=${today}`);
         if (attResp.ok) {
           const attJson = await attResp.json();
-          // Tolerant parsing: support { presentToday, absentToday }, { present, absent }, or an array of records
+
+          // Normalize to an array of attendance records
+          let todays = [];
           if (attJson && typeof attJson === 'object' && !Array.isArray(attJson)) {
-            presentToday = attJson.presentToday ?? attJson.present ?? attJson.present_count ?? presentToday;
-            absentToday = attJson.absentToday ?? attJson.absent ?? attJson.absent_count ?? absentToday;
+            // Support wrapper formats { data: [...] } or { records: [...] }
+            if (Array.isArray(attJson.data)) todays = attJson.data;
+            else if (Array.isArray(attJson.records)) todays = attJson.records;
+            else if (attJson.success && Array.isArray(attJson.data)) todays = attJson.data;
+            // if object contains counts, respect them
+            if (todays.length === 0) {
+              presentToday = attJson.presentToday ?? attJson.present ?? presentToday;
+              absentToday = attJson.absentToday ?? attJson.absent ?? absentToday;
+            }
           } else if (Array.isArray(attJson)) {
-            const total = attJson.length;
-            const present = attJson.filter(r => {
+            todays = attJson;
+          }
+
+          // If we have array records, compute present/absent and use them as preview
+          if (Array.isArray(todays) && todays.length > 0) {
+            const total = todays.length;
+            const present = todays.filter(r => {
               const s = (r.attendance_status || r.status || r.present || '').toString().toLowerCase();
               return s === 'present' || s === 'p' || s === '1' || s === 'true';
             }).length;
             presentToday = present;
             absentToday = total - present;
+
+            const previewFromAtt = todays.slice(0, 10).map((r, idx) => ({
+              sno: idx + 1,
+              employee_name: r.name || r.employee_name || `ID ${r.enroll_id || r.id || 'N/A'}`,
+              departmentname: r.department || '',
+              attendance_status: r.attendance_status || r.status || '',
+              time_status: r.time_status || r.late_status || '',
+              check_in_time: r.first_in || r.clock_in_time || '',
+              device_accessed: r.device || ''
+            }));
+
+            // Replace preview with today's attendance preview when available
+            if (previewFromAtt.length > 0) preview = previewFromAtt;
           }
         } else {
           console.warn('Attendance proxy responded with status', attResp.status);

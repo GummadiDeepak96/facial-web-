@@ -106,9 +106,9 @@ const AttendanceReport = () => {
             employeeName: 'All Employees',
             enrollId: 'ALL',
           });
-          toast.success(`Found ${response.data.records.length} attendance records`);
+          console.log(`Found ${response.data.records.length} attendance records`);
         } else if (response.data && response.data.message) {
-          toast.info(response.data.message);
+          console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: 'All Employees', enrollId: 'ALL' });
         } else {
           toast.error('Failed to fetch attendance report');
@@ -135,9 +135,9 @@ const AttendanceReport = () => {
             employeeName: employeeName,
             enrollId: employee.enroll_id,
           });
-          toast.success(`Found ${response.data.records.length} attendance records for ${employeeName}`);
+          console.log(`Found ${response.data.records.length} attendance records for ${employeeName}`);
         } else if (response.data && response.data.message) {
-          toast.info(response.data.message);
+          console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: employeeName, enrollId: employee.enroll_id });
         } else {
           toast.error('Failed to fetch attendance report');
@@ -272,7 +272,6 @@ const AttendanceReport = () => {
       doc.save(fileName);
       
       console.log('✅ PDF saved:', fileName);
-      toast.success('PDF downloaded successfully!');
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       console.error('Error stack:', error.stack);
@@ -360,7 +359,6 @@ const AttendanceReport = () => {
       XLSX.writeFile(workbook, fileName);
 
       console.log('✅ Excel file saved:', fileName);
-      toast.success('Excel report downloaded successfully!');
     } catch (error) {
       console.error('❌ Excel generation error:', error);
       toast.error('Failed to generate Excel report: ' + error.message);
@@ -584,6 +582,7 @@ const AttendanceReport = () => {
                 <tr>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Employee</th>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Department</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Role</th>
                   <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date</th>
                   <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Status</th>
                   <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Check In</th>
@@ -602,22 +601,8 @@ const AttendanceReport = () => {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
                       <td style={{ padding: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            {record.name ? record.name.charAt(0).toUpperCase() : '?'}
-                          </div>
-                          <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ textAlign: 'center' }}>
                             <div style={{ fontWeight: '600', color: '#1e293b' }}>{record.name || 'N/A'}</div>
                             <div style={{ fontSize: '13px', color: '#64748b' }}>{record.email || 'No email'}</div>
                           </div>
@@ -625,7 +610,9 @@ const AttendanceReport = () => {
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div>{record.department || 'N/A'}</div>
-                        <div style={{ fontSize: '13px', color: '#94a3b8' }}>{record.role || ''}</div>
+                      </td>
+                      <td style={{ padding: '16px', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '13px' }}>{record.role || 'N/A'}</div>
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div style={{ fontWeight: '500' }}>
@@ -701,7 +688,7 @@ const AttendanceReport = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" style={{ 
+                    <td colSpan="8" style={{ 
                       padding: '48px',
                       textAlign: 'center',
                       color: '#94a3b8'
