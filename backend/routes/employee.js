@@ -83,81 +83,90 @@ router.get('/profile', authenticateEmployee, async (req, res) => {
 // Get Employee Attendance History
 router.get('/attendance', authenticateEmployee, async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, enroll_id: queryEnrollId } = req.query;
     const employeeId = req.employee.id;
 
-    console.log('📊 Fetching attendance for employee id:', employeeId, 'Month:', month, 'Year:', year);
+    console.log('📊 Fetching attendance for employee id:', employeeId, 'Month:', month, 'Year:', year, 'queryEnrollId:', queryEnrollId);
 
-    // First, get the employee's enroll_id/person_id from database
+    // Determine DB name
     const dbName = require('../config').DB_CONFIG.database;
-    const empIdCol = await db.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_schema = ? AND table_name = 'employees' 
-       AND column_name IN ('person_id','enroll_id','employeeid','id') 
-       ORDER BY FIELD(column_name, 'person_id', 'enroll_id', 'employeeid', 'id') LIMIT 1`,
-      [dbName]
-    );
-    const empIdField = empIdCol.length > 0 ? empIdCol[0].column_name : 'person_id';
 
-    const employeeData = await db.query(`SELECT ${empIdField} as enroll_id FROM employees WHERE ${empIdField} = ?`, [employeeId]);
-    
-    if (!employeeData || employeeData.length === 0) {
-      return res.status(404).json({ error: 'Employee not found' });
+    // If enroll_id is provided in query, use it directly
+    let enrollId;
+    if (queryEnrollId) {
+      const val = String(queryEnrollId).trim();
+      if (!/^\d+$/.test(val)) {
+        console.warn('⚠️ Invalid enroll_id in query:', queryEnrollId);
+        return res.status(400).json({ error: 'Invalid enroll_id' });
+      }
+      enrollId = val;
+      console.log('🔍 Using enroll_id from query param:', enrollId);
+    } else {
+      // Primary key column for employees (the value stored in token id)
+      const pkColRows = await db.query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_schema = ? AND table_name = 'employees' 
+         AND column_name IN ('enroll_id','person_id','employeeid','id') 
+         ORDER BY FIELD(column_name, 'enroll_id','person_id','employeeid','id') LIMIT 1`,
+        [dbName]
+      );
+      const pkCol = pkColRows.length > 0 ? pkColRows[0].column_name : 'id';
+
+      // The column that maps to attendance.enroll_id (try common names)
+      const enrollColRows = await db.query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_schema = ? AND table_name = 'employees' 
+         AND column_name IN ('enroll_id','person_id','employeeid','id') 
+         ORDER BY FIELD(column_name, 'enroll_id','person_id','employeeid','id') LIMIT 1`,
+        [dbName]
+      );
+      const enrollCol = enrollColRows.length > 0 ? enrollColRows[0].column_name : 'id';
+
+      console.log('🔍 Using pkCol:', pkCol, 'and enrollCol:', enrollCol, 'to lookup employee');
+
+      // Query the employee row by the primary key column (the value stored in token)
+      let employeeData = await db.query(
+        `SELECT ${enrollCol} as enroll_id FROM employees WHERE ${pkCol} = ? LIMIT 1`,
+        [employeeId]
+      );
+
+      if (!employeeData || employeeData.length === 0) {
+        console.warn('Employee lookup returned no rows (pkCol lookup). Trying fallback by id column...');
+        // Fallback: try matching the 'id' column directly
+        const fallback = await db.query('SELECT enroll_id as enroll_id FROM employees WHERE id = ? LIMIT 1', [employeeId]);
+        if (!fallback || fallback.length === 0) {
+          return res.status(404).json({ error: 'Employee not found' });
+        }
+        employeeData = fallback;
+      }
+
+      enrollId = employeeData[0].enroll_id;
+      console.log('🔍 Employee enroll_id:', enrollId);
+
+      if (!enrollId && enrollId !== 0) {
+        console.warn('⚠️ Employee enroll_id missing for employee', employeeId);
+        return res.status(404).json({ error: 'Employee enroll_id not found' });
+      }
     }
 
-    const enrollId = employeeData[0].enroll_id;
-    console.log('🔍 Employee enroll_id:', enrollId);
+    // Fetch attendance directly from attendance_summary table
+    let sql = `SELECT * FROM attendance_summary WHERE enroll_id = ?`;
+    const params = [enrollId];
 
-    // Fetch attendance from PHP API
-    const http = require('http');
-    const https = require('https');
-    const url = require('url');
-    
-    const PHP_PERSONS_API = process.env.PHP_PERSONS_API || process.env.REACT_APP_PHP_PERSONS_API || 'http://localhost/Realtime_Mysql/get_persons.php';
-    const phpBase = PHP_PERSONS_API.replace('get_persons.php', '');
-    let apiUrl = `${phpBase}get_attendance_summary_api.php?enroll_id=${enrollId}`;
-    
     if (month && year) {
-      apiUrl += `&month=${month}&year=${year}`;
+      sql += ` AND DATE_FORMAT(date, '%Y-%m') = ?`;
+      params.push(`${year}-${month.toString().padStart(2, '0')}`);
     }
 
-    console.log('🌐 Fetching from PHP API:', apiUrl);
+    sql += ` ORDER BY date DESC`;
 
-    const fetchAttendance = () => {
-      return new Promise((resolve) => {
-        const parsed = url.parse(apiUrl);
-        const getter = parsed.protocol === 'https:' ? https : http;
-        const options = {
-          hostname: parsed.hostname,
-          port: parsed.port,
-          path: parsed.path,
-          method: 'GET'
-        };
-
-        const proxyReq = getter.request(options, proxyRes => {
-          let data = '';
-          proxyRes.on('data', chunk => data += chunk);
-          proxyRes.on('end', () => {
-            try {
-              const json = JSON.parse(data);
-              resolve(Array.isArray(json) ? json : []);
-            } catch (err) {
-              console.error('Failed to parse PHP response:', err);
-              resolve([]);
-            }
-          });
-        });
-
-        proxyReq.on('error', (err) => {
-          console.error('Error fetching PHP attendance:', err);
-          resolve([]);
-        });
-
-        proxyReq.end();
-      });
-    };
-
-    const attendance = await fetchAttendance();
+    let attendance = [];
+    try {
+      attendance = await db.query(sql, params);
+    } catch (dbErr) {
+      console.error('Error querying attendance_summary:', dbErr.message);
+      attendance = [];
+    }
 
     console.log('📥 Fetched attendance records:', attendance.length);
 

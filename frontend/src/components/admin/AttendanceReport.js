@@ -105,7 +105,9 @@ const AttendanceReport = () => {
             employeeName: 'All Employees',
             enrollId: 'ALL',
           });
+          console.log(`Found ${response.data.records.length} attendance records`);
         } else if (response.data && response.data.message) {
+          console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: 'All Employees', enrollId: 'ALL' });
         } else {
         }
@@ -130,7 +132,9 @@ const AttendanceReport = () => {
             employeeName: employeeName,
             enrollId: employee.enroll_id,
           });
+          console.log(`Found ${response.data.records.length} attendance records for ${employeeName}`);
         } else if (response.data && response.data.message) {
+          console.log(response.data.message);
           setReportData({ records: [], count: 0, employeeName: employeeName, enrollId: employee.enroll_id });
         } else {
         }
@@ -586,16 +590,18 @@ const AttendanceReport = () => {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
                       <td style={{ padding: '16px' }}>
-                        <div>
-                          <div style={{ fontWeight: '600', color: '#1e293b' }}>{record.name || 'N/A'}</div>
-                          <div style={{ fontSize: '13px', color: '#64748b' }}>{record.email || 'No email'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{record.name || 'N/A'}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b' }}>{record.email || 'No email'}</div>
+                          </div>
                         </div>
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div>{record.department || 'N/A'}</div>
                       </td>
-                      <td style={{ padding: '16px', color: '#475569' }}>
-                        <div>{record.role || 'N/A'}</div>
+                      <td style={{ padding: '16px', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '13px' }}>{record.role || 'N/A'}</div>
                       </td>
                       <td style={{ padding: '16px', color: '#475569' }}>
                         <div style={{ fontWeight: '500' }}>

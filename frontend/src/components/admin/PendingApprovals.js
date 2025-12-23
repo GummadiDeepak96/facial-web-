@@ -171,7 +171,7 @@ const PendingApprovals = () => {
                   <tr key={person.id} style={{ transition: 'all 0.2s' }}>
                     <td><strong>#{person.id}</strong></td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
                         <strong>{person.name || 'Unknown'}</strong>
                       </div>
                     </td>
