@@ -203,6 +203,7 @@ const fetchSummary = async (type) => {
         totalContacts: totalContacts
       });
 
+      // Prepare recent attendance preview (first 10 persons)
       let preview = persons.slice(0, 10).map((p, idx) => ({
         sno: p.id || p.enroll_id || idx + 1,
         employee_name: p.name || p.fullname || `Person ${idx + 1}`,
