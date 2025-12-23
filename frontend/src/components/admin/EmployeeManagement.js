@@ -51,6 +51,7 @@ const EmployeeManagement = () => {
     person_id: '',
     status: 'pending'
   });
+  const [formErrors, setFormErrors] = useState({});
   const [nameReadOnly, setNameReadOnly] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -251,6 +252,20 @@ if (empCopy.status) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Custom validation
+    const errors = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
+    if (!formData.email.trim()) errors.email = 'Email is required';
+    if (!formData.department_id) errors.department_id = 'Department is required';
+    if (!formData.role_id) errors.role_id = 'Role is required';
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    setFormErrors({});
     setIsSaving(true);
     try {
       // There is no server-side "add" in this deployment — import action should perform an update
@@ -389,6 +404,7 @@ if (empCopy.status) {
       person_id: '',
       status: 'pending'
     });
+    setFormErrors({});
     setNameReadOnly(false);
   };
 
@@ -512,7 +528,6 @@ if (empCopy.status) {
 
   const handleDownloadSelected = () => {
     if (selectedEmployees.length === 0) {
-      toast.warning('Please select at least one employee to download');
       return;
     }
     generateSelectedPDF();
@@ -525,7 +540,6 @@ if (empCopy.status) {
     });
 
     if (selectedData.length === 0) {
-      toast.warning('No employee data found for selected records');
       return;
     }
 
@@ -588,7 +602,6 @@ if (empCopy.status) {
     const fileName = `selected_employees_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     setSelectedEmployees([]);
     setSelectAll(false);
   };
@@ -636,7 +649,6 @@ if (empCopy.status) {
     console.log('=== PDF Generation Filter Complete ===');
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 
@@ -715,7 +727,6 @@ if (empCopy.status) {
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     
-    toast.success('PDF downloaded successfully');
     handleCloseDownloadModal();
   };
 
@@ -732,7 +743,6 @@ if (empCopy.status) {
     });
 
     if (filteredData.length === 0) {
-      toast.warning('No employees found with selected filters');
       return;
     }
 
@@ -782,7 +792,6 @@ if (empCopy.status) {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
     const fileName = `employees_${deptName}_${roleName}_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    toast.success('Excel downloaded successfully');
     handleCloseDownloadModal();
   };
 
@@ -1082,10 +1091,10 @@ if (empCopy.status) {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    required
                     readOnly={modalType === 'edit' || nameReadOnly}
                     title={modalType === 'edit' || nameReadOnly ? 'Name comes from device (read-only)' : ''}
                   />
+                  {formErrors.name && <span className="error-message">{formErrors.name}</span>}
                 </div>
 
                 <div className="form-group">
@@ -1095,8 +1104,8 @@ if (empCopy.status) {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    required
                   />
+                  {formErrors.email && <span className="error-message">{formErrors.email}</span>}
                 </div>
 
                 {modalType === 'add' && (
@@ -1120,7 +1129,6 @@ if (empCopy.status) {
                     name="department_id"
                     value={formData.department_id}
                     onChange={handleInputChange}
-                    required
                   >
                     <option key="select-dept" value="">Select Department</option>
                     {departments.map((dept, i) => {
@@ -1132,6 +1140,7 @@ if (empCopy.status) {
                       );
                     })}
                   </select>
+                  {formErrors.department_id && <span className="error-message">{formErrors.department_id}</span>}
                 </div>
 
                 <div className="form-group">
@@ -1140,7 +1149,6 @@ if (empCopy.status) {
                     name="role_id"
                     value={formData.role_id}
                     onChange={handleInputChange}
-                    required
                   >
                     <option key="select-role" value="">Select Role</option>
                     {roles.map((role, i) => {
@@ -1152,6 +1160,7 @@ if (empCopy.status) {
                       );
                     })}
                   </select>
+                  {formErrors.role_id && <span className="error-message">{formErrors.role_id}</span>}
                 </div>
 
                 <div className="form-group">

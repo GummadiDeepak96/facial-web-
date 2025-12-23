@@ -216,47 +216,29 @@ router.get('/attendance/report', authenticateManager, async (req, res) => {
       });
     }
 
-    // Step 2: Fetch attendance from PHP database (attendance_summary table)
+    // Step 2: Fetch attendance from local DB (attendance_summary table)
     // Get: date, day, status, first_in, last_out, late_status
-    const PHP_PERSONS_API = process.env.PHP_PERSONS_API || process.env.REACT_APP_PHP_PERSONS_API || 'http://localhost/Realtime_Mysql/get_persons.php';
-    const phpBase = PHP_PERSONS_API.replace('get_persons.php', '');
-    
-    const fetchAttendanceForEmployee = (personId) => {
-      return new Promise((resolve) => {
-        let target = `${phpBase}get_attendance_summary_api.php?enroll_id=${personId}`;
-        
-        // Add date filter
+    const fetchAttendanceForEmployee = async (personId) => {
+      try {
+        const { db } = require('../database');
+        let sql = `SELECT * FROM attendance_summary WHERE enroll_id = ?`;
+        const params = [personId];
+
         if (startDate === endDate) {
-          target += `&date=${startDate}`;
+          sql += ` AND date = ?`;
+          params.push(startDate);
         } else {
-          target += `&start_date=${startDate}&end_date=${endDate}`;
+          sql += ` AND date BETWEEN ? AND ?`;
+          params.push(startDate, endDate);
         }
-        
-        const parsed = url.parse(target);
-        const getter = parsed.protocol === 'https:' ? https : http;
-        const options = {
-          hostname: parsed.hostname,
-          port: parsed.port,
-          path: parsed.path,
-          method: 'GET'
-        };
 
-        const proxyReq = getter.request(options, proxyRes => {
-          let data = '';
-          proxyRes.on('data', chunk => data += chunk);
-          proxyRes.on('end', () => {
-            try {
-              const json = JSON.parse(data);
-              resolve(Array.isArray(json) ? json : []);
-            } catch (err) {
-              resolve([]);
-            }
-          });
-        });
-
-        proxyReq.on('error', () => resolve([]));
-        proxyReq.end();
-      });
+        sql += ` ORDER BY date DESC`;
+        const rows = await db.query(sql, params);
+        return rows;
+      } catch (err) {
+        console.error('Error querying attendance_summary for person:', personId, err.message);
+        return [];
+      }
     };
 
     // Fetch attendance for all department employees

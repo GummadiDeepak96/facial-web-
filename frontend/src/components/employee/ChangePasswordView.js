@@ -44,8 +44,8 @@ const ChangePasswordView = () => {
     try {
       const token = sessionStorage.getItem('token');
       
-      const response = await axios.post(
-        'http://localhost:8080/api/auth/employee/change-password',
+      await axios.post(
+        '/api/auth/employee/change-password',
         {
           newPassword: formData.newPassword
         },
@@ -144,7 +144,7 @@ const ChangePasswordView = () => {
             )}
           </div>
 
-          <div className="password-requirements">
+          {/* <div className="password-requirements">
             <h4>Password Requirements:</h4>
             <ul>
               <li className={formData.newPassword.length >= 6 ? 'met' : ''}>
@@ -160,7 +160,7 @@ const ChangePasswordView = () => {
                 Passwords match
               </li>
             </ul>
-          </div>
+          </div> */}
 
           <button
             type="submit"
@@ -171,7 +171,7 @@ const ChangePasswordView = () => {
           </button>
         </form>
 
-        <div className="security-note">
+        {/* <div className="security-note">
           <p><strong>Security Tips:</strong></p>
           <ul>
             <li>Use a strong, unique password</li>
@@ -179,7 +179,7 @@ const ChangePasswordView = () => {
             <li>Change your password regularly</li>
             <li>You'll receive a confirmation email after changing your password</li>
           </ul>
-        </div>
+        </div> */}
       </div>
 
       <style>{`
